@@ -2,3 +2,4 @@ streamlit
 pandas
 pillow
 streamlit-drawable-canvas
+fpdf2
