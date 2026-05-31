@@ -4,6 +4,7 @@ from datetime import datetime
 import pandas as pd
 from PIL import Image
 import io
+import json
 from fpdf import FPDF
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -12,22 +13,18 @@ from googleapiclient.http import MediaIoBaseUpload
 st.set_page_config(page_title="Firma Odoo PDF", layout="centered")
 st.title("Registro de Entrega / Servicio")
 
-# === CONEXIÓN A DRIVE CON TUS SECRETS QUE YA TIENES ===
+# === CONEXIÓN A DRIVE USANDO TU FORMATO [gcp_oauth] ===
 @st.cache_resource
 def conectar_drive():
-    creds = Credentials(
-        None,
-        refresh_token=st.secrets["google"]["refresh_token"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=st.secrets["google"]["client_id"],
-        client_secret=st.secrets["google"]["client_secret"],
-        scopes=["https://www.googleapis.com/auth/drive.file"]
+    token_info = json.loads(st.secrets["gcp_oauth"]["token"])
+    creds = Credentials.from_authorized_user_info(
+        token_info,
+        scopes=["https://www.googleapis.com/auth/drive"]
     )
     service = build('drive', 'v3', credentials=creds)
     return service
 
 def crear_carpeta_drive(service, nombre_carpeta, id_padre=None):
-    """Crea carpeta en Drive si no existe y regresa el ID"""
     query = f"name='{nombre_carpeta}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
     if id_padre:
         query += f" and '{id_padre}' in parents"
@@ -48,7 +45,6 @@ def crear_carpeta_drive(service, nombre_carpeta, id_padre=None):
         return folder.get('id')
 
 def subir_a_drive(service, archivo_bytes, nombre_archivo, mimetype, id_carpeta):
-    """Sube archivo a carpeta específica de Drive"""
     file_metadata = {'name': nombre_archivo, 'parents': [id_carpeta]}
     media = MediaIoBaseUpload(io.BytesIO(archivo_bytes), mimetype=mimetype)
     file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
@@ -135,7 +131,6 @@ if st.session_state.paso == 2:
                     pdf.set_font("Arial", 'B', 12)
                     pdf.cell(0, 10, "Firma del Operador:", ln=True)
 
-                    # Guardar firma temporal para que FPDF la lea
                     with open("firma_temp.png", "wb") as f:
                         f.write(img_byte_arr)
                     pdf.image("firma_temp.png", x=10, w=100)
@@ -154,7 +149,6 @@ if st.session_state.paso == 2:
                     st.success(f"PDF guardado en Drive: Fotos_Anden > {st.session_state.datos_registro['ref_oddo']}")
                     st.balloons()
 
-                    # Botón de descarga local también
                     st.download_button(
                         label="Descargar PDF también",
                         data=pdf_bytes,
