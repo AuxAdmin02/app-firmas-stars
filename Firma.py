@@ -135,7 +135,12 @@ if st.session_state.paso == 2:
                         f.write(img_byte_arr)
                     pdf.image("firma_temp.png", x=10, w=100)
 
-                    pdf_bytes = pdf.output() # <-- LÍNEA CORREGIDA BB
+                    # ESTA ES LA PARTE QUE ARREGLA TODO BB - JALA CON FPDF Y FPDF2
+                    pdf_output = pdf.output(dest='S')
+                    if isinstance(pdf_output, str):
+                        pdf_bytes = pdf_output.encode('latin-1')
+                    else:
+                        pdf_bytes = bytes(pdf_output)
 
                     # 3. Subir a Drive: Fotos_Anden > ref_oddo > PDF
                     id_fotos_anden = crear_carpeta_drive(service, "Fotos_Anden")
